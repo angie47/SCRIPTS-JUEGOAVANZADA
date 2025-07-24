@@ -243,3 +243,74 @@ SPRITE_GRANDE = [
     SpriteSheetAnim('kael.png', 10, 96, 96, (460, 540), 'horizontal'),
     SpriteSheetAnim('ailith.png', 6, 32, 48, (460, 540), 'vertical')
 ]
+# ---- NUEVO NIVEL 1 CON GRAVEDAD Y SUELO ----
+
+# Aquí definimos la clase para los obstáculos del nivel
+class Obstacle:
+    def __init__(self, x, y, w=60, h=60):
+        # Guardamos la posición y tamaño del obstáculo
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        # Bandera para saber si el obstáculo fue destruido
+        self.destroyed = False
+
+    # Aquí obtenemos el rectángulo del obstáculo (para colisiones)
+    def rect(self):
+        return pygame.Rect(self.x, self.y, self.w, self.h)
+
+    # Aquí dibujamos el obstáculo en pantalla teniendo en cuenta la cámara
+    def draw(self, screen, camera_x):
+        if not self.destroyed:
+            # Rectángulo principal (cuerpo del obstáculo)
+            pygame.draw.rect(screen, (180, 180, 70), 
+                             (self.x - camera_x, self.y, self.w, self.h), 
+                             border_radius=9)
+            # Bordes del obstáculo para dar detalle visual
+            pygame.draw.rect(screen, (120, 120, 40), 
+                             (self.x - camera_x, self.y, self.w, self.h), 
+                             3, border_radius=9)
+
+# Aquí creamos la función que maneja el primer nivel del juego
+def nivel1_loop(personaje_idx):
+    # Creamos un reloj para controlar el tiempo del juego
+    clock = pygame.time.Clock()
+
+    # Aquí definimos el ancho del mundo (scroll lateral) y el suelo
+    WORLD_WIDTH = 4200
+    GROUND_Y = HEIGHT - 110
+    PLAYER_W, PLAYER_H = 56, 82  # tamaño del jugador
+
+    # Aquí creamos el fondo del nivel con un color oscuro
+    fondo = pygame.Surface((WORLD_WIDTH, HEIGHT))
+    fondo.fill((38, 38, 41))
+
+    # Aquí agregamos detalles al fondo (círculos que simulan rocas o niebla)
+    for i in range(80):
+        pygame.draw.circle(fondo, (60, 60, 65),
+                           (random.randint(60, WORLD_WIDTH - 60), 
+                            random.randint(50, HEIGHT - 190)),
+                           random.randint(20, 65), 0)
+
+    # Aquí definimos el suelo del nivel como un rectángulo
+    suelo_rect = pygame.Rect(0, GROUND_Y, WORLD_WIDTH, HEIGHT - GROUND_Y)
+
+    # Aquí colocamos NPCs que muestran la historia del juego
+    npcs_pos = [(400, GROUND_Y - 38), 
+                (900, GROUND_Y - 38), 
+                (1600, GROUND_Y - 38)]
+    historia_carteles = [
+        "En un mundo envuelto en niebla,\nlos elegidos deben hallar la verdad...",
+        "Antiguos secretos y peligros\nacechan en la oscuridad...",
+        "Solo tú puedes romper el legado\nde la niebla. ¡Suerte!"
+    ]
+
+    # Aquí guardamos la posición del último NPC para colocar obstáculos después
+    last_npc_x = npcs_pos[-1][0] + 90
+
+    # Colores de los NPCs y de sus carteles
+    npc_color = (110, 170, 240)
+    cartel_color = (200, 200, 210)
+
+
