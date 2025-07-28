@@ -1,16 +1,82 @@
 import pygame
 import os
-import random
 from settings import WIDTH, HEIGHT
 
-GROUND_Y = HEIGHT - 100  # posición del suelo
+GROUND_Y = HEIGHT - 100  # piso
 
+# ------------------ Proyectil ------------------
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.image = pygame.Surface((10, 4))
+        self.image.fill((255, 255, 0))
+        self.rect = self.image.get_rect(center=(x, y))
+        self.speed = 12
+
+    def update(self):
+        self.rect.x += self.speed
+        if self.rect.x > WIDTH:
+            self.kill()
+
+# ------------------ Enemigo ------------------
+class Enemy:
+    def __init__(self):
+        # Usa Walk y Attack
+        self.walk_frames = self.load_frames("assetts/images/enemies/Minotaur_1/Walk.png", 64, 64, scale=1.0)
+        self.attack_frames = self.load_frames("assetts/images/enemies/Minotaur_1/Attack.png", 64, 64, scale=1.0)
+
+        self.rect = self.walk_frames[0].get_rect(midbottom=(WIDTH - 100, GROUND_Y))
+        self.index = 0
+        self.attacking = False
+        self.alive = True
+        self.attack_done = False
+
+    def load_frames(self, path, fw, fh, scale=1):
+        sheet = pygame.image.load(path).convert_alpha()
+        frames = []
+        sheet_width, sheet_height = sheet.get_size()
+        for y in range(0, sheet_height, fh):
+            for x in range(0, sheet_width, fw):
+                frame = sheet.subsurface((x, y, fw, fh))
+                frames.append(pygame.transform.scale(frame, (int(fw*scale), int(fh*scale))))
+        return frames
+
+    def update(self, player_rect):
+        if not self.alive:
+            return
+
+        # Movimiento hacia el jugador
+        if not self.attacking:
+            if self.rect.x > player_rect.x + 50:
+                self.rect.x -= 3
+            else:
+                self.attacking = True
+                self.index = 0
+
+        # Animación
+        self.index += 0.2
+        if self.attacking and self.index >= len(self.attack_frames):
+            self.attack_done = True
+            self.index = len(self.attack_frames)-1
+        elif not self.attacking and self.index >= len(self.walk_frames):
+            self.index = 0
+
+    def draw(self, screen):
+        if not self.alive:
+            return
+        if self.attacking:
+            frame = self.attack_frames[int(self.index)]
+        else:
+            frame = self.walk_frames[int(self.index)]
+        screen.blit(frame, self.rect)
+
+# ------------------ Nivel 1 ------------------
 class LevelOneScreen:
     def __init__(self, screen, player_sprite):
         self.screen = screen
         self.clock = pygame.time.Clock()
 
-        # --- FONDO ANIMADO ---
+        # Fondo animado
         self.background_frames = []
         bg_path = "assetts/images/level1/background"
         for file in sorted(os.listdir(bg_path)):
@@ -22,52 +88,62 @@ class LevelOneScreen:
         self.bg_frame_rate = 8
         self.bg_frame_counter = 0
 
-        # --- JUGADOR ---
+        # Jugador
         self.player_sprite = player_sprite
         self.player_sprite.frames = [
-            pygame.transform.scale(frame, (60, 60)).convert_alpha()
+            pygame.transform.scale(frame, (80, 80)).convert_alpha()
             for frame in self.player_sprite.frames
         ]
         self.player_rect = self.player_sprite.frames[0].get_rect(midbottom=(100, GROUND_Y))
         self.player_speed = 5
-
-        # Fisica del salto
         self.is_jumping = False
         self.jump_velocity = 0
         self.gravity = 1
 
-        # --- NIEBLA ---
+        # Disparo
+        self.bullets = pygame.sprite.Group()
+        self.shoot_sound = pygame.mixer.Sound("assetts/sounds/shoot.wav") if os.path.exists("assetts/sounds/shoot.wav") else None
+
+        # Enemigo
+        self.enemy = Enemy()
+
+        # Niebla
         self.fog = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         self.fog.fill((200, 200, 200, 50))
         self.fog_x = -WIDTH
 
-        # --- OBSTACULOS ---
-        self.obstacles = []
-        self.spawn_timer = 0
+        # Tiempo de nivel
+        self.start_ticks = pygame.time.get_ticks()
 
-        # --- GAME OVER ---
+        # Estado
         self.game_over = False
-        self.font = pygame.font.Font(None, 60)
-
-        # --- MÚSICA NIVEL ---
-        pygame.mixer.music.load("assetts/music/music_nivel1.mp3")
-        pygame.mixer.music.set_volume(0.6)
-        pygame.mixer.music.play(-1)
+        self.level_completed = False
+        self.font = pygame.font.Font(None, 80)
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE and not self.is_jumping and not self.game_over:
                 self.is_jumping = True
                 self.jump_velocity = -15
-            if event.key == pygame.K_r and self.game_over:
+            if event.key == pygame.K_r and (self.game_over or self.level_completed):
                 self.__init__(self.screen, self.player_sprite)
+            if event.key == pygame.K_z and not self.game_over:
+                self.shoot()
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.game_over:
+            self.shoot()
+
+    def shoot(self):
+        bullet = Bullet(self.player_rect.right, self.player_rect.centery)
+        self.bullets.add(bullet)
+        if self.shoot_sound:
+            self.shoot_sound.play()
 
     def update(self):
-        if self.game_over:
+        if self.game_over or self.level_completed:
             return
 
+        # Movimiento jugador
         keys = pygame.key.get_pressed()
-        # Movimiento horizontal
         if keys[pygame.K_a] and self.player_rect.left > 0:
             self.player_rect.x -= self.player_speed
         if keys[pygame.K_d] and self.player_rect.right < WIDTH:
@@ -81,33 +157,31 @@ class LevelOneScreen:
                 self.player_rect.bottom = GROUND_Y
                 self.is_jumping = False
 
-        # Actualizar animacion jugador
-        self.player_sprite.update()
+        # Balas
+        self.bullets.update()
 
-        # Mover niebla
-        self.fog_x += 1
-        if self.fog_x > 0:
-            self.fog_x = 0
-
-        # Spawnear obstáculos pequeños
-        self.spawn_timer += 1
-        if self.spawn_timer > 80:
-            width = random.randint(25, 40)
-            height = random.randint(25, 40)
-            x = WIDTH + 50
-            y = GROUND_Y - height
-            rect = pygame.Rect(x, y, width, height)
-            self.obstacles.append(rect)
-            self.spawn_timer = 0
-
-        # Mover obstaculos
-        for rect in self.obstacles:
-            rect.x -= 6
+        # Enemigo
+        self.enemy.update(self.player_rect)
 
         # Colisiones
-        for rect in self.obstacles:
-            if self.player_rect.colliderect(rect):
+        if self.enemy.alive:
+            for bullet in self.bullets:
+                if self.enemy.rect.colliderect(bullet.rect):
+                    self.enemy.alive = False
+                    bullet.kill()
+            if self.enemy.rect.colliderect(self.player_rect) and self.enemy.attack_done:
                 self.game_over = True
+
+        # Niebla (te persigue)
+        self.fog_x += 1
+        if self.fog_x >= 0:
+            self.fog_x = 0
+            self.game_over = True
+
+        # Tiempo del nivel
+        seconds = (pygame.time.get_ticks() - self.start_ticks) / 1000
+        if seconds >= 30 and not self.game_over:
+            self.level_completed = True
 
         # Fondo animado
         self.bg_frame_counter += 1
@@ -116,21 +190,16 @@ class LevelOneScreen:
             self.bg_frame_counter = 0
 
     def draw(self):
-        # Fondo
         self.screen.blit(self.background_frames[self.current_bg_frame], (0, 0))
-
-        # Obstaculos
-        for rect in self.obstacles:
-            pygame.draw.rect(self.screen, (200, 0, 0), rect)
-
-        # Jugador
+        self.bullets.draw(self.screen)
+        self.enemy.draw(self.screen)
         current_frame = self.player_sprite.frames[self.player_sprite.current_frame]
         self.screen.blit(current_frame, self.player_rect)
-
-        # Niebla
         self.screen.blit(self.fog, (self.fog_x, 0))
 
-        # Game Over
         if self.game_over:
-            text = self.font.render("GAME OVER - R para reiniciar", True, (255, 0, 0))
+            text = self.font.render("GAME OVER", True, (180, 0, 0))
+            self.screen.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2))
+        elif self.level_completed:
+            text = self.font.render("NIVEL COMPLETADO", True, (0, 180, 0))
             self.screen.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2))

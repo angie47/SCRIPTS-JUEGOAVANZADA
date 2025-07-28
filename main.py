@@ -3,7 +3,7 @@ import sys
 from settings import WIDTH, HEIGHT, FPS
 from menu import MainMenu
 from character_select import CharacterSelectScreen
-from level1 import LevelOneScreen
+from level1 import LevelOneScreen  # usa el nuevo nivel 1 con enemigos
 
 pygame.init()
 
@@ -45,6 +45,7 @@ while True:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 if selected_character_sprite:
                     state = "NIVEL1"
+                    # --- INICIO DEL NIVEL 1 CON PERSONAJE SELECCIONADO ---
                     level1_screen = LevelOneScreen(screen, selected_character_sprite)
 
         elif state == "PERSONAJES":
