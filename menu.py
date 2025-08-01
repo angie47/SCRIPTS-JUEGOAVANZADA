@@ -1,3 +1,4 @@
+# menu.py
 import pygame
 import os
 from button import StoneButton
@@ -6,78 +7,72 @@ from settings import WIDTH, HEIGHT
 
 class MainMenu:
     def __init__(self, screen):
-        #Aqui se inicializa la pantalla y el fondo animado del menu
         self.screen = screen
         self.bg = Background("assetts/images/backgrounds/frames/", fps=10)
 
-        #Aqui se cargan las fuentes para el titulo del juego
         font_path = "assetts/fonts/PressStart2P-Regular.ttf"
-        self.title_font = pygame.font.Font(font_path, 80)   # Fuente para texto normal
-        self.mist_font = pygame.font.Font(font_path, 160)   # Fuente mas grande para "MIST"
+        self.title_font = pygame.font.Font(font_path, 80)
+        self.mist_font = pygame.font.Font(font_path, 160)
 
-        #Aqui se carga el sonido del click de los botones
         click_sound = pygame.mixer.Sound(os.path.join("assetts/sounds/click.mp3"))
 
-        #Aqui se definen margenes y dimensiones de los botones
         margin = 40
         btn_width, btn_height = 340, 75
-
-        #Aqui se crea el boton de PERSONAJES (colocado en la esquina inferior derecha)
+        
         self.btn_personajes = StoneButton(
             "PERSONAJES",
             (WIDTH - btn_width - margin, HEIGHT - btn_height - margin),
             (btn_width, btn_height),
             click_sound
         )
-        #Aqui se crea el boton de SALIR (colocado en la esquina inferior izquierda)
         self.btn_salir = StoneButton(
             "SALIR",
             (margin, HEIGHT - btn_height - margin),
             (btn_width, btn_height),
             click_sound
         )
-
-        #Aqui se guardan todos los botones en una lista para actualizarlos y dibujarlos
         self.buttons = [self.btn_personajes, self.btn_salir]
 
     def draw(self):
-        #Aqui se dibuja el fondo animado
         self.bg.draw(self.screen)
-        x = 60
-        y = 80
+        x_base = 60
+        y_base = 80
 
-        # Aqui se dibuja la primera linea del titulo: "THE"
-        the_surface = self.title_font.render("THE", True, (255, 255, 255))
-        self.screen.blit(the_surface, (x, y))
-        y += self.title_font.get_height() + 40
+        white_color = (255, 255, 255)
+        golden_color = (255, 215, 0)
 
-        #Aqui se dibuja la segunda linea: "LEGACY" a la izquierda y "MIST" grande a la derecha
-        legacy_surface = self.title_font.render("LEGACY", True, (255, 255, 255))
-        mist_surface = self.mist_font.render("MIST", True, (255, 255, 200))
-        self.screen.blit(legacy_surface, (x, y))
-        mist_x = x + legacy_surface.get_width() + 60
-        mist_y = y - (mist_surface.get_height() - legacy_surface.get_height()) // 2
+        the_surface = self.title_font.render("THE", True, white_color)
+        self.screen.blit(the_surface, (x_base, y_base))
+        current_y = y_base + the_surface.get_height() + 40
+
+        legacy_surface = self.title_font.render("LEGACY", True, white_color)
+        mist_surface = self.mist_font.render("MIST", True, golden_color)
+        
+        self.screen.blit(legacy_surface, (x_base, current_y))
+        
+        mist_x = x_base + legacy_surface.get_width() + 60
+        mist_y = current_y - (mist_surface.get_height() - legacy_surface.get_height()) // 2 
         self.screen.blit(mist_surface, (mist_x, mist_y))
-        y += self.title_font.get_height() + 40
+        
+        current_y += self.title_font.get_height() + 40
 
-        #Aqui se dibuja la tercera linea: "OF THE"
-        ofthe_surface = self.title_font.render("OF THE", True, (255, 255, 255))
-        self.screen.blit(ofthe_surface, (x, y))
+        ofthe_surface = self.title_font.render("OF THE", True, white_color)
+        self.screen.blit(ofthe_surface, (x_base, current_y))
 
-        #Aqui se dibujan los botones del menu
         for btn in self.buttons:
             btn.draw(self.screen)
 
     def update(self):
-        #Aqui se actualiza el fondo animado
         self.bg.update()
-        #Aqui se obtiene la posicion actual del raton
         mouse_pos = pygame.mouse.get_pos()
-        #Aqui se actualiza cada boton en funcion de la posicion del raton
         for btn in self.buttons:
             btn.update(mouse_pos)
 
     def handle_event(self, event):
-        #Aqui se manejan los eventos (clicks, hover, etc.) de cada boton
         for btn in self.buttons:
-            btn.handle_event(event)
+            if btn.handle_event(event):
+                for other_btn in self.buttons:
+                    if other_btn != btn:
+                        other_btn.set_selected(False)
+                return True
+        return False

@@ -1,3 +1,4 @@
+# character_sprite.py
 import pygame
 import os
 
@@ -17,6 +18,15 @@ class CharacterSprite:
         self.fps = fps
         self.time_per_frame = 1000 // fps
         self.last_update = pygame.time.get_ticks()
+        self.x = 0 
+        self.y = 0 
+
+    def set_position(self, x, y):
+        self.x = x
+        self.y = y
+
+    def get_position(self):
+        return self.x, self.y
 
     def update(self):
         now = pygame.time.get_ticks()
@@ -24,5 +34,5 @@ class CharacterSprite:
             self.current_frame = (self.current_frame + 1) % self.num_frames
             self.last_update = now
 
-    def draw(self, surface, x, y):
-        surface.blit(self.frames[self.current_frame], (x, y))
+    def draw(self, surface):
+        surface.blit(self.frames[self.current_frame], (self.x, self.y))

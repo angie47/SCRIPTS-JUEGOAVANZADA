@@ -1,44 +1,49 @@
+# button.py
 import pygame
 
 class StoneButton:
-    def __init__(self, text, pos, size, sound):
+    def __init__(self, text, pos, size, click_sound):
         self.text = text
-        self.pos = pos
-        self.size = size
-        self.sound = sound
-        self.base_rect = pygame.Rect(pos, size)
-        self.rect = self.base_rect.copy()
-        self.hovered = False
-        self.clicked = False
-        self.font = pygame.font.Font("assetts/fonts/PressStart2P-Regular.ttf", 32)
-        self.base_color = (110, 110, 110)
-        self.edge_color = (70, 70, 70)
-        self.text_color = (255, 255, 210)
-        self.grow_scale = 1.1
+        self.rect = pygame.Rect(pos, size)
+        self.click_sound = click_sound
+        self.font = pygame.font.Font("assetts/fonts/PressStart2P-Regular.ttf", 30)
+        self.is_hovered = False
+        self.is_selected = False 
+
+        self.base_text_color = (255, 255, 255) 
+        self.hover_text_color = (255, 255, 255) 
+
+        self.base_button_color = (150, 75, 75)   
+        self.hover_button_color = (200, 100, 100) 
+        self.selected_button_color = (255, 215, 0) 
+
+        self.border_color = (0, 0, 0) 
+        self.border_thickness = 4     
+        self.border_radius = 15       
 
     def draw(self, screen):
-        color = self.base_color
-        rect = self.rect
-        pygame.draw.rect(screen, color, rect, border_radius=18)
-        pygame.draw.rect(screen, self.edge_color, rect, width=6, border_radius=18)
-        text_surf = self.font.render(self.text, True, self.text_color)
-        screen.blit(text_surf, (rect.centerx - text_surf.get_width()//2, rect.centery - text_surf.get_height()//2))
+        current_bg_color = self.selected_button_color if self.is_selected else (self.hover_button_color if self.is_hovered else self.base_button_color)
+        pygame.draw.rect(screen, current_bg_color, self.rect, border_radius=self.border_radius)
+        pygame.draw.rect(screen, self.border_color, self.rect, self.border_thickness, border_radius=self.border_radius)
+
+        text_surface = self.font.render(self.text, True, self.base_text_color)
+        text_rect = text_surface.get_rect(center=self.rect.center)
+        screen.blit(text_surface, text_rect)
 
     def update(self, mouse_pos):
-        if self.base_rect.collidepoint(mouse_pos):
-            if not self.hovered:
-                self.rect = self.base_rect.inflate(
-                    int(self.size[0] * (self.grow_scale - 1)),
-                    int(self.size[1] * (self.grow_scale - 1))
-                )
-                self.rect.center = self.base_rect.center
-                self.hovered = True
-        else:
-            if self.hovered:
-                self.rect = self.base_rect.copy()
-            self.hovered = False
+        self.is_hovered = self.rect.collidepoint(mouse_pos)
 
     def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN and self.rect.collidepoint(event.pos):
-            self.sound.play()
-            self.clicked = True
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.is_hovered:
+                self.click_sound.play()
+                self.is_selected = True
+                return True
+            else:
+                self.is_selected = False
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            self.is_selected = False 
+        return False
+
+    def set_selected(self, selected):
+        self.is_selected = selected
